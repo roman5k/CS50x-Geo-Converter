@@ -1,0 +1,10 @@
+pandas
+pyproj
+folium
+Flask
+Flask-Session
+Flask-Uploads
+Flask-WTF
+requests
+io
+openpyxl

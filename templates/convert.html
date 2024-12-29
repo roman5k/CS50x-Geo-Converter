@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+{% block title %}
+    Convert Coordinates
+{% endblock %}
+{% block main %}
+<!-- cs50 duck and gpt-4o and youtube was used to help with this -->
+<div id="drop-area" class="container text-center my-4 p-4 border-dashed rounded">
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <p id="drop-text">Drag and drop a file here or click to upload</p>
+            <input type="file" id="fileInput" name="file" accept=".xlsx, .xls, .xlsm" style="display: none;" required>
+            <label class="btn btn-primary" for="fileInput" id="customFileButton">Select a file</label>
+        </div>
+        <div id="dropdown-container" style="display:none;"></div>
+        <div style="display: flex; justify-content: center; gap: 10px;">
+            <div id="convert-button-container" style="display:none;">
+                <button type="button" id="convertButton" class="btn btn-primary my-4">Convert</button>
+            </div>
+            <div id="download-button-container" style="display:none;">
+                <button type="button" id="downloadButton" class="btn btn-success my-4">Download</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin="">
+</script>
+<!-- cs50 duck and gpt-4o and youtube was used to help with this -->
+<script>
+    document.getElementById('customFileButton').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default behavior
+        document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+        handleFiles(event.target.files);
+    });
+
+    function handleFiles(files) {
+        console.log("handleFiles called");
+        let file = files[0];
+        document.getElementById('drop-text').textContent = `File selected: ${file.name}`;
+        document.getElementById('drop-area').classList.add('highlight');
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let data = new Uint8Array(event.target.result);
+            let workbook = XLSX.read(data, {type: 'array'});
+            let firstSheetName = workbook.SheetNames[0];
+            let worksheet = workbook.Sheets[firstSheetName];
+            let headers = XLSX.utils.sheet_to_json(worksheet, {header: 1})[0];
+            showChoiceFields(headers);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function showChoiceFields(headers) {
+        let dropdownContainer = document.getElementById('dropdown-container');
+        dropdownContainer.style.display = 'block';
+        dropdownContainer.innerHTML = '';
+
+        let createDropdownItem = (labelText, selectElement) => {
+            let item = document.createElement('div');
+            item.className = 'row mb-3';
+            let labelCol = document.createElement('div');
+            labelCol.className = 'col-12 col-md-6 text-left';
+            labelCol.innerHTML = `<label class="form-label">${labelText}</label>`;
+            let selectCol = document.createElement('div');
+            selectCol.className = 'col-12 col-md-6';
+            selectCol.appendChild(selectElement);
+            item.appendChild(labelCol);
+            item.appendChild(selectCol);
+            return item;
+        };
+
+        let selectLongitude = createSelectField(headers, 'longitude');
+        let longitudeItem = createDropdownItem('Select the column for Longitude (X, Easting):', selectLongitude);
+        dropdownContainer.appendChild(longitudeItem);
+
+        let selectLatitude = createSelectField(headers, 'latitude');
+        let latitudeItem = createDropdownItem('Select the column for Latitude (Y, Northing):', selectLatitude);
+        dropdownContainer.appendChild(latitudeItem);
+
+        let selectCoordSys = document.createElement('select');
+        selectCoordSys.id = 'coordSys';
+        selectCoordSys.className = 'form-control';
+        let defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select an option';
+        selectCoordSys.appendChild(defaultOption);
+
+        let options = {
+            "UTM Zone 32N (EPSG:32632)": "EPSG:32632",
+            "Gauss-Kruger Zone 3 (EPSG:31467)": "EPSG:31467"
+        };
+
+        for (let key in options) {
+            let option = document.createElement('option');
+            option.value = options[key];
+            option.textContent = key;
+            selectCoordSys.appendChild(option);
+        }
+
+        let coordSysItem = createDropdownItem('Select the source coordinate system:', selectCoordSys);
+        dropdownContainer.appendChild(coordSysItem);
+
+        selectLongitude.addEventListener('change', checkDropdowns);
+        selectLatitude.addEventListener('change', checkDropdowns);
+        selectCoordSys.addEventListener('change', checkDropdowns);
+    }
+
+    function createSelectField(options, name) {
+        let select = document.createElement('select');
+        select.name = name;
+        select.id = name;
+        select.className = 'form-control';
+        // Add default option
+        let defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select an option';
+        select.appendChild(defaultOption);
+
+        options.forEach(option => {
+            let opt = document.createElement('option');
+            opt.value = option;
+            opt.textContent = option;
+            select.appendChild(opt);
+        });
+
+        return select;
+    }
+
+    function checkDropdowns() {
+        let longitude = document.getElementById('longitude').value;
+        let latitude = document.getElementById('latitude').value;
+        let coordSys = document.getElementById('coordSys').value;
+
+        if (longitude && latitude && coordSys) {
+            document.getElementById('convert-button-container').style.display = 'block';
+            triggerConversion('preview');
+        } else {
+            document.getElementById('convert-button-container').style.display = 'none';
+        }
+    }
+
+    document.getElementById('convertButton').addEventListener('click', function() {
+        triggerConversion('convert');
+    });
+
+    function triggerConversion(action) {
+        let fileInput = document.getElementById('fileInput');
+        let file = fileInput.files[0];
+        let fileName = file.name;
+        let formData = new FormData();
+        formData.append('file', file);
+        formData.append('longitudeColumn', document.getElementById('longitude').value);
+        formData.append('latitudeColumn', document.getElementById('latitude').value);
+        formData.append('coordSys', document.getElementById('coordSys').value);
+        formData.append('action', action);
+
+        fetch('/convert', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (action === 'preview') {
+                return response.text();
+            } else {
+                return response.blob();
+            }
+        })
+        .then(data => {
+            if (action === 'preview') {
+                displayOutput(data);
+            } else {
+                let url = window.URL.createObjectURL(data);
+                let a = document.createElement('a');
+                let today = new Date();
+                let formattedDate = today.getFullYear().toString() +
+                                    (today.getMonth() + 1).toString().padStart(2, '0') +
+                                    today.getDate().toString().padStart(2, '0');
+                a.href = url;
+                a.download = `${fileName.replace('.xlsx', '')}_converted_${formattedDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                document.getElementById('download-button-container').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function displayOutput(data) {
+        let outputContainer = document.querySelector('.output-container');
+        if (!outputContainer) {
+            outputContainer = document.createElement('div');
+            outputContainer.className = 'output-container';
+            document.getElementById('drop-area').appendChild(outputContainer);
+        }
+        let values = data.split(", ").map(Number);
+        let coordinates = [values[1], values[0]];
+
+        outputContainer.innerHTML = `<p>Preview Converted Coordinates: <br>${data}</p>
+        <div id="map" style="height: 250px;"></div>`; // Ensure the map div has a height
+        var map = L.map('map').setView(coordinates, 13);
+        var marker = L.marker(coordinates).addTo(map);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+    }
+
+    document.getElementById('downloadButton').addEventListener('click', function() {
+        let fileInput = document.getElementById('fileInput');
+        let file = fileInput.files[0];
+        let formData = new FormData();
+        formData.append('file', file);
+        formData.append('longitudeColumn', document.getElementById('longitude').value);
+        formData.append('latitudeColumn', document.getElementById('latitude').value);
+        formData.append('coordSys', document.getElementById('coordSys').value);
+        formData.append('action', 'convert');
+
+        fetch('/convert', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.blob())
+        .then(data => {
+            let url = window.URL.createObjectURL(data);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'converted_coordinates.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+</script>
+{% endblock %}

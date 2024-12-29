@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}
+    Welcome
+{% endblock %}
+{% block main %}
+<div class="container text-center my-5">
+    <h1>
+        <p>Welcome to the</p>
+        <div>
+            <p>
+                <span class="blue">C</span><span class="red">$</span><span class="yellow">5</span><span class="green">0</span>x
+            </p>
+            <span class="red">Geo Converter</span>
+        </h1>
+    </div>
+    <div class="container text-center my-5"></div>
+    <!-- gpt-4o was used to help with this -->
+    {% if session.get('user_id') %}
+        <p class="mt-5">Convert your data here!</p>
+        <a href="/convert" class="btn btn-primary mt-2">Convert</a>
+    {% else %}
+        <p class="mt-5">Register to convert coordinates.</p>
+        <a href="/register" class="btn btn-primary mt-1">Register</a>
+        <p class="mt-5">Already have an account?</p>
+        <a href="/login" class="btn btn-secondary mt-1">Login</a>
+    {% endif %}
+</div>
+{% endblock %}
