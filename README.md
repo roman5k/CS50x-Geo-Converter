@@ -26,7 +26,7 @@ also utilize the newly added 'Download' button.
 1. **Clone the repository:**
     ```sh
     git clone https://github.com/roman5k/CS50x-Geo-Converter.git
-    cd project
+    cd CS50x-Geo-Converter
     ```
 
 2. **Set up virtual environment:**
