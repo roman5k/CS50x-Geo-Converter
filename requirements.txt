@@ -7,3 +7,4 @@ Flask-Uploads
 Flask-WTF
 requests
 openpyxl
+cs50
