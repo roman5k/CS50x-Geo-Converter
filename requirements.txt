@@ -6,5 +6,4 @@ Flask-Session
 Flask-Uploads
 Flask-WTF
 requests
-io
 openpyxl
