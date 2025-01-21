@@ -31,13 +31,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
 
-      - name: Move index.html to root
+      - name: Install dependencies
         run: |
-          mkdir -p public
-          cp -r templates/* public/
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Render templates
+        run: python render_templates.py
+
+      - name: Copy static files
+        run: |
           cp -r static/* public/
 
       - name: Upload artifact
