@@ -34,10 +34,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Move index.htm to root
+      - name: Move index.html to root
         run: |
           mkdir -p public
-          mv templates/index.html public/index.html
+          cp -r templates/* public/
+          cp -r static/* public/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
